@@ -1,0 +1,15 @@
+﻿{
+  "name": "com.logandlp.prefabrush",
+  "version": "1.0.0",
+  "displayName": "PrefaBrush",
+  "description": "Spawn custom prefabs with brush in scene",
+  "unity": "6000.0.27",
+  "documentationUrl": "",
+  "changelogUrl": "",
+  "licensesUrl": "",
+  "author": {
+    "name": "Logan.dlp",
+    "email": "logan.delachapelle@gmail.com",
+    "url": "https://github.com/Logan-dlp"
+  }
+}
