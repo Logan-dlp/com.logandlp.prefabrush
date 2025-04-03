@@ -1,6 +1,8 @@
 #if UNITY_EDITOR
 
+using System;
 using System.Collections.Generic;
+using Newtonsoft.Json;
 using UnityEngine;
 using UnityEditor;
 
@@ -8,7 +10,7 @@ namespace com.logandlp.prefabrush.editor
 {
     using runtime;
     
-    public class PrefaBrushWindow : EditorWindow
+    public class PrefaBrushWindow : EditorWindow, ISerialize<PrefaBrushData>
     {
         private const int ITEMS_PER_LINE = 3;
         private const int MIN_NUMBER_INSTANCE = 1;
@@ -18,21 +20,24 @@ namespace com.logandlp.prefabrush.editor
         private const float GUI_CIRCLE_DISTANCE = .5f;
         private const float MIN_SCALE_VARIATION_DEGREE = .05f;
         
+        private const string SAVED_PATH = "SavedBrushSettings";
+        
         private static readonly Vector2 PREVIEW_SIZE = new(300, 100);
         private static readonly Vector2 ADD_PREVIEW_SIZE = new(90, 20);
         private static readonly Vector2 DELETE_PREVIEW_SIZE = new(20, 20);
         private static readonly Vector2 PREFABS_PREVIEW_SIZE = new(70, 70);
 
         private static int _fixedNumberInstance;
-        private static int _RandomMinNumberInstance;
-        private static int _RandomMaxNumberInstance;
+        private static int _randomMinNumberInstance;
+        private static int _randomMaxNumberInstance;
         
         private static float _brushRadius;
         private static float _maxInclinationDregree;
         
         private static Color _brushColor = Color.yellow;
-        private static Vector2 _scaleVariationSpawn;
         private static LayerMask _drawMask = ~0;
+        private static Vector2 _scrollPositionList = Vector2.zero;
+        private static Vector2 _scaleVariationSpawn = Vector2.one;
         private static InstanciateMode _instanciateMode = InstanciateMode.Range;
         
         private static List<GameObject> _currentsPrefabsList = new();
@@ -40,8 +45,6 @@ namespace com.logandlp.prefabrush.editor
         
         private static PrefaBrushWindow _window;
         
-        private Vector2 _scrollPositionList = Vector2.zero;
-
         public static void OnSceneGUI(SceneView sceneView)
         {
             if (!_window.hasFocus && _currentsPrefabsList == null || _currentsPrefabsList.Count == 0)
@@ -68,7 +71,16 @@ namespace com.logandlp.prefabrush.editor
         
         private static void SpawnObjects()
         {
-            Debug.Log("okay");
+            Vector3 RandomPointInCircle(Vector3 normal, Vector3 center, float radius)
+            {
+                Vector2 randomPoint2D = UnityEngine.Random.insideUnitCircle * radius;
+                CustomTangents customTangents = new(normal);
+                Vector3 randomPoint3D = customTangents.Tangent1 * randomPoint2D.x + customTangents.Tangent2 * randomPoint2D.y;
+                
+                return center + randomPoint3D;
+            }
+            
+            // Manque le spawn !
         }
         
         [MenuItem("Tools/PrefaBrush")]
@@ -76,28 +88,69 @@ namespace com.logandlp.prefabrush.editor
         {
             GetWindow<PrefaBrushWindow>("PrefaBrush");
         }
+        
+        public PrefaBrushData Serialized()
+        {
+            return new()
+            {
+                FixedNumberInstance = _fixedNumberInstance,
+                RandomMinNumberInstance = _randomMinNumberInstance,
+                RandomMaxNumberInstance = _randomMaxNumberInstance,
+                
+                BrushRadius = _brushRadius,
+                MaxInclinationDregree = _maxInclinationDregree,
+                
+                DrawMask = _drawMask,
+                InstanciateMode = _instanciateMode,
+                
+                BrushColor = new(_brushColor.r, _brushColor.g, _brushColor.b, _brushColor.a),
+                ScaleVariationSpawn = new(_scaleVariationSpawn.x, _scaleVariationSpawn.y),
+                
+                SelectedPrefabsPathList = CustomConvert.PrefabsListToStringList(_selectedPrefabsList),
+                CurrentPrefabsPathList = CustomConvert.PrefabsListToStringList(_currentsPrefabsList),
+            };
+        }
+
+        public void Deserialize(PrefaBrushData data)
+        {
+            _fixedNumberInstance = data.FixedNumberInstance;
+            _randomMinNumberInstance = data.RandomMinNumberInstance;
+            _randomMaxNumberInstance = data.RandomMaxNumberInstance;
+            
+            _brushRadius = data.BrushRadius;
+            _maxInclinationDregree = data.MaxInclinationDregree;
+            
+            _drawMask = data.DrawMask;
+            _instanciateMode = data.InstanciateMode;
+            
+            _brushColor = new(data.BrushColor.X, data.BrushColor.Y, data.BrushColor.Z, data.BrushColor.W);
+            _scaleVariationSpawn = new(data.ScaleVariationSpawn.X, data.ScaleVariationSpawn.Y);
+            
+            _selectedPrefabsList = CustomConvert.StringListToPrefabsList(data.SelectedPrefabsPathList);
+            _currentsPrefabsList = CustomConvert.StringListToPrefabsList(data.CurrentPrefabsPathList);
+        }
 
         private void OnEnable()
         {
             _window = this;
             SceneView.duringSceneGui += OnSceneGUI;
-            // save
+            LoadBrushSettings();
         }
 
         private void OnDisable()
         {
             SceneView.duringSceneGui -= OnSceneGUI;
-            // save
+            SavedBrushSettings();
         }
 
         private void OnGUI()
         {
-            BrushOptionGUI();
+            BrushSettingsGUI();
         }
 
-        private void BrushOptionGUI()
+        private void BrushSettingsGUI()
         {
-            GUILayout.Label("Brush Options", EditorStyles.boldLabel);
+            GUILayout.Label("Brush Settings", EditorStyles.boldLabel);
             
             _brushColor = EditorGUILayout.ColorField("Brush Color", _brushColor);
             _drawMask = EditorGUILayout.MaskField("Drawing layer", _drawMask.value, UnityEditorInternal.InternalEditorUtility.layers);
@@ -105,7 +158,7 @@ namespace com.logandlp.prefabrush.editor
             
             EditorGUILayout.Space();
             
-            GUILayout.Label("Spawning Options", EditorStyles.boldLabel);
+            GUILayout.Label("Spawning Settings", EditorStyles.boldLabel);
             _instanciateMode = (InstanciateMode)EditorGUILayout.EnumPopup("Instanciate Mode", _instanciateMode);
 
             switch (_instanciateMode)
@@ -114,8 +167,8 @@ namespace com.logandlp.prefabrush.editor
                     _fixedNumberInstance = EditorGUILayout.IntField("Number Instance", Mathf.Max(MIN_NUMBER_INSTANCE, _fixedNumberInstance));
                     break;
                 case InstanciateMode.Range:
-                    _RandomMinNumberInstance = EditorGUILayout.IntField("Min Number Instance", Mathf.Max(MIN_NUMBER_INSTANCE, _RandomMinNumberInstance));
-                    _RandomMaxNumberInstance = EditorGUILayout.IntField("Max Number Instance", Mathf.Max(_RandomMinNumberInstance, _RandomMaxNumberInstance));
+                    _randomMinNumberInstance = EditorGUILayout.IntField("Min Number Instance", Mathf.Max(MIN_NUMBER_INSTANCE, _randomMinNumberInstance));
+                    _randomMaxNumberInstance = EditorGUILayout.IntField("Max Number Instance", Mathf.Max(_randomMinNumberInstance, _randomMaxNumberInstance));
                     break;
             }
             _maxInclinationDregree = EditorGUILayout.FloatField("Max Inclination Dregree", Mathf.Max(MIN_INCLINAITION_DEGREE, _maxInclinationDregree));
@@ -214,7 +267,7 @@ namespace com.logandlp.prefabrush.editor
                     break;
                 case EventType.DragPerform:
                     DragAndDrop.AcceptDrag();
-                    foreach (Object objectReference in DragAndDrop.objectReferences)
+                    foreach (UnityEngine.Object objectReference in DragAndDrop.objectReferences)
                     {
                         GameObject objectReferencePrefabs = objectReference as GameObject;
                         if (objectReferencePrefabs != null && !_selectedPrefabsList.Contains(objectReferencePrefabs))
@@ -227,6 +280,35 @@ namespace com.logandlp.prefabrush.editor
             }
             
             Repaint();
+        }
+
+        private void SavedBrushSettings()
+        {
+            try
+            {
+                string json = JsonConvert.SerializeObject(Serialized(), Newtonsoft.Json.Formatting.Indented);
+                EditorPrefs.SetString(SAVED_PATH, json);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"Failed to save brush settings: {ex}");
+            }
+        }
+
+        private void LoadBrushSettings()
+        {
+            if (EditorPrefs.HasKey(SAVED_PATH))
+            {
+                try
+                {
+                    string json = EditorPrefs.GetString(SAVED_PATH);
+                    Deserialize(JsonConvert.DeserializeObject<PrefaBrushData>(json));
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogError($"Failed to load brush settings: {ex}");
+                }
+            }
         }
     }
 }
