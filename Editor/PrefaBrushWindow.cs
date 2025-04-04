@@ -94,9 +94,8 @@ namespace com.logandlp.prefabrush.editor
                     GameObject prefabInstance = Instantiate(_currentsPrefabsList[UnityEngine.Random.Range(0, _currentsPrefabsList.Count)], hitInfo.point, Quaternion.identity);
                     prefabInstance.transform.localScale = Vector3.one * UnityEngine.Random.Range(_scaleVariationSpawn.x, _scaleVariationSpawn.y);
                     prefabInstance.transform.rotation = Quaternion.LookRotation(hitInfo.normal, Vector3.up) * Quaternion.Euler(90 + UnityEngine.Random.Range(-_maxInclinationDregree, _maxInclinationDregree), 
-                        0, 
-                        UnityEngine.Random.Range(-_maxInclinationDregree, _maxInclinationDregree));
-                    prefabInstance.transform.position = hitInfo.point;
+                                                                                                                                                0, 
+                                                                                                                                                UnityEngine.Random.Range(-_maxInclinationDregree, _maxInclinationDregree));
                     instanciatedPrefabsList.Add(prefabInstance);
                 }
             }
@@ -105,6 +104,12 @@ namespace com.logandlp.prefabrush.editor
             {
                 case InstanciateMode.Fixed:
                     for (int i = 0; i < _fixedNumberInstance; ++i)
+                    {
+                        SpawnPrefab();
+                    }
+                    break;
+                case InstanciateMode.Range:
+                    for (int i = 0; i < UnityEngine.Random.Range(_randomMinNumberInstance, _randomMaxNumberInstance); ++i)
                     {
                         SpawnPrefab();
                     }
