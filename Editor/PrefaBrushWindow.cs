@@ -12,7 +12,7 @@ namespace com.logandlp.prefabrush.editor
 {
     using runtime;
     
-    public class PrefaBrushWindow : EditorWindow, ISerialize<PrefaBrushData>
+    public class PrefaBrushWindow : EditorWindow, ISerializable<PrefaBrushData>
     {
         private const int ITEMS_PER_LINE = 3;
         private const int MIN_NUMBER_INSTANCE = 1;
@@ -123,8 +123,8 @@ namespace com.logandlp.prefabrush.editor
         {
             GetWindow<PrefaBrushWindow>("PrefaBrush");
         }
-        
-        public PrefaBrushData Serialized()
+
+        public PrefaBrushData Serialize()
         {
             return new()
             {
@@ -321,7 +321,7 @@ namespace com.logandlp.prefabrush.editor
         {
             try
             {
-                string json = JsonConvert.SerializeObject(Serialized(), Newtonsoft.Json.Formatting.Indented);
+                string json = JsonConvert.SerializeObject(Serialize(), Newtonsoft.Json.Formatting.Indented);
                 EditorPrefs.SetString(SAVED_PATH, json);
             }
             catch (Exception ex)
