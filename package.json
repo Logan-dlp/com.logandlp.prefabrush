@@ -1,11 +1,11 @@
 ﻿{
   "name": "com.logandlp.prefabrush",
-  "version": "1.0.0",
+  "version": "1.11",
   "displayName": "PrefaBrush",
-  "description": "Spawn custom prefabs with brush in scene",
+  "description": "Spawn custom prefabs with brush in scene.",
   "unity": "6000.0.27",
   "documentationUrl": "",
-  "changelogUrl": "",
+  "changelogUrl": "https://github.com/Logan-dlp/com.logandlp.prefabrush/releases/tag/v1.11",
   "licensesUrl": "",
   "dependencies": {
     "com.unity.nuget.newtonsoft-json": "3.2.1"
