@@ -2,9 +2,11 @@
 
 using System;
 using System.Collections.Generic;
-using Newtonsoft.Json;
+
 using UnityEngine;
 using UnityEditor;
+
+using Newtonsoft.Json;
 
 namespace com.logandlp.prefabrush.editor
 {
@@ -61,7 +63,7 @@ namespace com.logandlp.prefabrush.editor
 
                 if (Event.current.type == EventType.MouseDown && Event.current.button == 0)
                 {
-                    SpawnObjects();
+                    SpawnObjects(hitInfo.point, hitInfo.normal);
                     Event.current.Use();
                 }
             }
@@ -69,18 +71,46 @@ namespace com.logandlp.prefabrush.editor
             sceneView.Repaint();
         }
         
-        private static void SpawnObjects()
+        private static void SpawnObjects(Vector3 center, Vector3 normal)
         {
-            Vector3 RandomPointInCircle(Vector3 normal, Vector3 center, float radius)
+            List<GameObject> instanciatedPrefabsList = new();
+            
+            Vector3 RandomPointInCircle()
             {
-                Vector2 randomPoint2D = UnityEngine.Random.insideUnitCircle * radius;
+                Vector2 randomPoint2D = UnityEngine.Random.insideUnitCircle * _brushRadius;
                 CustomTangents customTangents = new(normal);
                 Vector3 randomPoint3D = customTangents.Tangent1 * randomPoint2D.x + customTangents.Tangent2 * randomPoint2D.y;
                 
                 return center + randomPoint3D;
             }
+
+            void SpawnPrefab()
+            {
+                if (Physics.Raycast(RandomPointInCircle() + normal, -normal, out RaycastHit hitInfo) && !instanciatedPrefabsList.Contains(hitInfo.transform.gameObject))
+                {
+                    if (_drawMask != (_drawMask | (1 << hitInfo.transform.gameObject.layer)))
+                        return;
+                            
+                    GameObject prefabInstance = Instantiate(_currentsPrefabsList[UnityEngine.Random.Range(0, _currentsPrefabsList.Count)], hitInfo.point, Quaternion.identity);
+                    prefabInstance.transform.localScale = Vector3.one * UnityEngine.Random.Range(_scaleVariationSpawn.x, _scaleVariationSpawn.y);
+                    prefabInstance.transform.rotation = Quaternion.LookRotation(hitInfo.normal, Vector3.up) * Quaternion.Euler(90 + UnityEngine.Random.Range(-_maxInclinationDregree, _maxInclinationDregree), 
+                        0, 
+                        UnityEngine.Random.Range(-_maxInclinationDregree, _maxInclinationDregree));
+                    prefabInstance.transform.position = hitInfo.point;
+                    instanciatedPrefabsList.Add(prefabInstance);
+                }
+            }
             
-            // Manque le spawn !
+            switch (_instanciateMode)
+            {
+                case InstanciateMode.Fixed:
+                    for (int i = 0; i < _fixedNumberInstance; ++i)
+                    {
+                        SpawnPrefab();
+                    }
+                    break;
+            }
+            
         }
         
         [MenuItem("Tools/PrefaBrush")]
